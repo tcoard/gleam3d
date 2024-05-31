@@ -1,0 +1,101 @@
+import gleam/io
+import gleam/float
+import gleam/list
+import gleam/int
+import gleam/string
+import gleam/iterator
+import gleam/result
+import gleam/dict
+import coordinate_logic
+import custom_types.{
+  type Coord2d, type Direction1d, type Direction2d, type Path1d, type Path2d,
+  type Vec2d, L, R, east, north, south, west,
+}
+import simplifile
+
+// import gleam/order.{type Order}
+
+const out_path = "data/current.csv"
+
+pub fn reverse_direction(d: Direction1d) -> Direction1d {
+  case d {
+    R -> L
+    L -> R
+  }
+}
+
+pub fn print_to_csv(triangles) {
+  let assert Ok(_) =
+    triangles
+    |> string.join("\n")
+    |> simplifile.write(to: out_path)
+}
+
+pub fn fold_path(path: Path1d) {
+  list.concat([
+    path,
+    [R],
+    list.reverse(path)
+      |> list.map(reverse_direction),
+  ])
+}
+
+pub fn one_dimension_to_int(d: Direction1d) -> Int {
+  case d {
+    R -> 1
+    L -> -1
+  }
+}
+
+pub fn int_to_dir(n: Int) -> Direction2d {
+  case n {
+    0 -> north
+    1 -> east
+    2 -> south
+    3 -> west
+    _ -> panic as "int_to_dir's input should be %4"
+  }
+}
+
+pub fn one_dimension_to_2d(path: Path1d) -> List(Direction2d) {
+  path
+  |> list.map(one_dimension_to_int)
+  |> list.fold([0], fn(acc, i) {
+    let assert Ok(last) = list.first(acc)
+    let assert Ok(next) = int.modulo(last + i, 4)
+    // using modulo b/c dividend can be negative
+    [next, ..acc]
+  })
+  |> list.map(int_to_dir)
+  |> list.reverse
+}
+
+pub fn vec_add(v1: Vec2d, v2: Vec2d) -> Vec2d {
+  #(v1.0 +. v2.0, v1.1 +. v2.1)
+}
+
+pub fn make_coords(path2d: List(Direction2d)) -> List(Coord2d) {
+  path2d
+  |> list.fold([#(0.0, 0.0)], fn(acc, i) {
+    let assert Ok(last) = list.first(acc)
+    [vec_add(last, i.vec), ..acc]
+  })
+  |> list.reverse
+}
+
+pub fn main() {
+  let n = 4
+  iterator.iterate([R], fold_path)
+  |> iterator.take(n)
+  |> iterator.to_list
+  // for testing
+  |> list.last
+  |> result.unwrap([R])
+  |> io.debug
+  // todo is there a better way to do this?
+  // |> outer_line
+  |> one_dimension_to_2d
+  |> make_coords
+  |> io.debug
+  // |> print_to_csv
+}

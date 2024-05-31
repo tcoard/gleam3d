@@ -1,0 +1,353 @@
+import gleam/io
+import gleam/float
+import gleam/list
+import gleam/string
+import simplifile
+
+// import gleam/order.{type Order}
+
+const line_width = 1.0
+
+const out_path = "data/current.csv"
+
+pub type Coord2d =
+  #(Float, Float)
+
+pub type Coord3d =
+  #(Float, Float, Float)
+
+pub type Line2d =
+  List(Coord2d)
+
+pub type Triangle2d =
+  #(Coord2d, Coord2d, Coord2d)
+
+pub type Triangle3d =
+  #(Coord3d, Coord3d, Coord3d)
+
+pub type Sign {
+  Pos
+  Neg
+}
+
+pub type MightBeInfinity {
+  Finite(num: Float)
+  Infinity(Sign)
+}
+
+pub type Complex {
+  Complex (
+    real: MightBeInfinity,
+    imaginary: Float
+  )
+}
+
+pub fn sign_to_float(sign_a: Sign) {
+  case sign_a {
+    Pos -> 1.0
+    Neg -> -1.0
+  }
+}
+
+pub fn float_to_sign(n: Float) {
+  case n >=. 0.0 {
+    True -> Pos
+    False -> Neg
+  }
+}
+
+pub fn calc_x2s(slope, x1) -> #(Float, Float) {
+  // power returns a result class, so I am just manually doing ^2
+  let assert Ok(sqrt_calc) =
+    float.square_root(
+      { line_width /. 2.0 }
+      *. { line_width /. 2.0 }
+      *. { slope *. slope +. 1.0 },
+    )
+  #(
+    { x1 *. slope *. slope +. x1 +. sqrt_calc } /. { slope *. slope +. 1.0 },
+    { x1 *. slope *. slope +. x1 -. sqrt_calc } /. { slope *. slope +. 1.0 },
+  )
+}
+
+pub fn calc_y2(slope, x1, y1, x2) -> Float {
+  y1 +. slope *. { x2 -. x1 }
+}
+
+pub fn safe_divide(a: MightBeInfinity, b: MightBeInfinity) -> MightBeInfinity {
+  case #(a, b) {
+    // todo double check infinity/infinit
+    // maybe it should be: Finite(sign_to_float(sign_a) *. sign_to_float(sign_b))
+    #(Infinity(_sign_a), Infinity(_sign_b)) -> panic
+    #(_, Infinity(_)) -> Finite(0.0)
+    #(Finite(other), Finite(0.0)) -> Infinity(float_to_sign(other))
+    #(Infinity(sign_a), Finite(other)) ->
+      Infinity(
+        sign_a
+        |> sign_to_float
+        |> float.multiply(other)
+        |> float_to_sign,
+      )
+    #(Finite(a_val), Finite(b_val)) -> Finite(a_val /. b_val)
+  }
+}
+
+pub fn safe_sqrt(n: Complex) -> Complex {
+  case n {
+  }
+    
+}
+
+pub fn safe_multiply(a: MightBeInfinity, b: MightBeInfinity) -> MightBeInfinity {
+  case #(a, b) {
+    #(Infinity(sign), Finite(val)) | #(Finite(val), Infinity(sign)) ->
+      Infinity(
+        sign
+        |> sign_to_float
+        |> float.multiply(val)
+        |> float_to_sign,
+      )
+    #(Infinity(sign_a), Infinity(sign_b)) ->
+      Infinity(float_to_sign(sign_to_float(sign_a) *. sign_to_float(sign_b)))
+    #(Finite(a_val), Finite(b_val)) -> Finite(a_val *. b_val)
+  }
+}
+
+pub fn road(line: Line2d) {
+  let x = list.map(line, fn(x) { x.0 })
+  let y = list.map(line, fn(x) { x.1 })
+
+  let assert [_, _, ..x_from_1_onward] = x
+  let dx =
+    list.zip(x_from_1_onward, x)
+    |> list.map(fn(rest_x) { rest_x.0 -. rest_x.1 })
+
+  let assert [_, _, ..y_from_1_onward] = y
+  let dy =
+    list.zip(y_from_1_onward, y)
+    |> list.map(fn(rest_y) { rest_y.0 -. rest_y.1 })
+
+  let assert [x0, x1, ..] = x
+  let assert [xm1, xm2, ..] = list.reverse(x)
+  let assert [y0, y1, ..] = y
+  let assert [ym1, ym2, ..] = list.reverse(y)
+  io.debug(dy)
+  io.debug(dx)
+  io.debug([ym1, ym2, xm1, xm2])
+  let dy_dx =
+    list.concat([
+      [safe_divide(Finite(y1 -. y0), Finite(x1 -. x0))],
+      // list.map(line, fn(coord) { safe_divide(Finite(coord.1), Finite(coord.0))}),
+        list.zip(dy, dx)
+        |> list.map(fn(dy_and_dx) {
+          safe_divide(Finite(dy_and_dx.0), Finite(dy_and_dx.1))
+        }),
+      [safe_divide(Finite(ym1 -. ym2), Finite(xm1 -. xm2))],
+    ])
+  let off1 = list.map(dy_dx, fn(i) { safe_multiply(Finite(-1.0), i) })
+
+
+
+  let off1 = list.map(dy_dx, fn(i) {
+    
+  safe_multiply(Finite(-1.0), i)
+  |> safe_divide(
+
+
+  io.debug(off1)
+  let off2 = 1
+
+  let off1_x =
+    list.zip(x, off1)
+    |> list.map(fn(x_off1) {
+      x_off1.0
+      +. {
+        line_width
+        *. case x_off1.1 {
+          Finite(n) -> n /. float.absolute_value(n)
+          Infinity(sign) -> sign_to_float(sign)
+        }
+      }
+
+      io.debug(
+        line_width
+        *. case x_off1.1 {
+          Finite(n) -> n /. float.absolute_value(n)
+          Infinity(sign) -> sign_to_float(sign)
+        })
+
+
+
+    })
+  let off1_y =
+    list.zip(y, off1)
+    |> list.map(fn(y_off1) {
+      y_off1.0
+      +. {
+        line_width
+        *. case y_off1.1 {
+          Finite(n) -> n /. float.absolute_value(n)
+          Infinity(sign) -> sign_to_float(sign)
+        }
+      }
+    })
+
+  // this is stupid
+  io.debug("off1_x")
+  io.debug(off1_x)
+  io.debug("off1_y")
+  io.debug(off1_y)
+  list.zip(
+    list.concat([off1_x, list.reverse(x)]),
+    list.concat([off1_y, list.reverse(y)]),
+  )
+}
+
+pub fn bisect(p1: Coord2d, p2: Coord2d, p3: Coord2d) -> #(Coord2d, Coord2d) {
+  case calc_bisect_slope(p1, p3) {
+    Ok(bisect_slope) -> {
+      let #(x2_plus, x2_minus) = calc_x2s(bisect_slope, p2.0)
+      let y2_plus = calc_y2(bisect_slope, p2.0, p2.1, x2_plus)
+      let y2_minus = calc_y2(bisect_slope, p2.0, p2.1, x2_minus)
+      // todo fix this mess
+      case y2_plus >. y2_minus {
+        True -> #(#(x2_plus, y2_plus), #(x2_minus, y2_minus))
+        False ->
+          case y2_plus == y2_minus {
+            True ->
+              case x2_plus >. x2_minus {
+                True -> #(#(x2_plus, y2_plus), #(x2_minus, y2_minus))
+                False -> #(#(x2_minus, y2_minus), #(x2_plus, y2_plus))
+              }
+            False -> #(#(x2_minus, y2_minus), #(x2_plus, y2_plus))
+          }
+      }
+    }
+    Error(Nil) -> {
+      let y2_plus = p2.1 +. line_width /. 2.0
+      let y2_minus = p2.1 -. line_width /. 2.0
+      #(#(p2.0, y2_plus), #(p2.0, y2_minus))
+    }
+  }
+}
+
+pub fn calc_bisect_slope(p1: Coord2d, p2: Coord2d) -> Result(Float, Nil) {
+  let #(x1, y1) = p1
+  let #(x2, y2) = p2
+  float.divide({ -1.0 *. { x2 -. x1 } }, { y2 -. y1 })
+}
+
+pub fn add_z_axis(coord: Coord2d, z: Float) -> Coord3d {
+  // todo make partial function? function capture or curry2?
+  #(coord.0, coord.1, z)
+}
+
+pub fn calc_triangle_coord(
+  bisect1: #(Coord2d, Coord2d),
+  bisect2: #(Coord2d, Coord2d),
+) -> List(Triangle3d) {
+  //height
+  // (doing both faces even though it is redundant)
+  // let #(a, b) = bisect1
+  // let #(c, d) = bisect2
+  // let aaa = { bisect1.0 }.0
+
+  [bisect1.0, bisect1.1, bisect2.1, bisect2.0, bisect1.0]
+  |> list.window_by_2
+  |> list.map(fn(coords) {
+    [
+      #(
+        add_z_axis(coords.0, 0.0),
+        add_z_axis(coords.1, 0.0),
+        add_z_axis(coords.1, line_width),
+      ),
+      #(
+        add_z_axis(coords.0, 0.0),
+        add_z_axis(coords.0, line_width),
+        add_z_axis(coords.1, line_width),
+      ),
+    ]
+  })
+  |> list.flatten
+  //|> list.append(
+  //  //flat planes
+  //  [
+  //    #(
+  //      add_z_axis(bisect1.0, 0.0),
+  //      add_z_axis(bisect1.1, 0.0),
+  //      add_z_axis(bisect2.1, 0.0),
+  //    ),
+  //    #(
+  //      add_z_axis(bisect1.0, line_width),
+  //      add_z_axis(bisect1.1, line_width),
+  //      add_z_axis(bisect2.1, line_width),
+  //    ),
+  //    #(
+  //      add_z_axis(bisect1.0, 0.0),
+  //      add_z_axis(bisect2.0, 0.0),
+  //      add_z_axis(bisect2.1, 0.0),
+  //    ),
+  //    #(
+  //      add_z_axis(bisect1.0, line_width),
+  //      add_z_axis(bisect2.0, line_width),
+  //      add_z_axis(bisect2.1, line_width),
+  //    ),
+  //  ],
+  //)
+}
+
+pub fn print_to_csv(triangles: List(Triangle3d)) {
+  let assert Ok(_) =
+    triangles
+    |> list.map(fn(triangle) {
+      let #(a, b, c) = triangle
+      [a, b, c]
+      |> list.map(fn(coord) {
+        float.to_string(coord.0)
+        <> ","
+        <> float.to_string(coord.1)
+        <> ","
+        <> float.to_string(coord.2)
+      })
+      |> string.join("|")
+    })
+    |> string.join("\n")
+    |> simplifile.write(to: out_path)
+}
+
+pub fn main() {
+  let line: Line2d = [
+    #(0.0, 0.0),
+    #(10.0, 0.0),
+    #(10.0, 10.0),
+    #(20.0, 10.0),
+    #(20.0, 0.0),
+  ]
+
+  //
+  // #(0.0, 10.0),
+  // #(10.0, 20.0),
+  // #(20.0, 20.0),
+  // #(10.0, 0.0),
+  // #(20.0, 0.0),
+  // #(30.0, 30.0),
+  //road(line)
+  // io.debug(line)
+   io.debug(road(line))
+  // is there a way to do this inline?
+  // let assert Ok(last) = list.last(line)
+  // let assert Ok(first) = list.first(line)
+
+  // line
+  // |> list.prepend(first)
+  // |> list.append([last])
+  // |> list.window(3)
+  // |> list.map(fn(angle) {
+  //   let assert [p1, p2, p3] = angle
+  //   bisect(p1, p2, p3)
+  // })
+  // |> list.window_by_2
+  // |> list.map(fn(bisects) { calc_triangle_coord(bisects.0, bisects.1) })
+  // |> list.flatten
+  // |> print_to_csv
+}

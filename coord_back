@@ -1,0 +1,217 @@
+import gleam/string
+import gleam/io
+import gleam/int
+import gleam/float
+import gleam/list
+import custom_types.{
+  type Coord2d, type Coord3d, type Direction2d, type Line2d, type Path1d,
+  type Path2d, type Triangle3d, type Vec2d, East, End, L, North, R, South, Start,
+  West,
+}
+import simplifile
+
+pub const line_width = 0.4
+
+// must be smaller than 1 because of rounding logic
+
+pub const line_length = 10.0
+
+// pub fn outer_line_vecs(path: Path2d, is_left is_left: Bool) -> List(Vec2d) {
+//   let sign = case is_left {
+//     True -> -1.0
+//     False -> 1.0
+//   }
+//   let delta = sign *. line_width /. 2.0
+//   path
+//   |> list.window_by_2
+//   |> list.map(fn(a_b) {
+//     let #(a, b) = a_b
+//     case #(a, b) {
+//       #(_, East) -> #(0.0, -1.0 *. delta)
+//       #(_, West) -> #(0.0, delta)
+//       #(_, North) -> #(delta, 0.0)
+//       #(_, South) -> #(-1.0 *. delta, 0.0)
+//       _ -> #(0.0, 0.0)
+//     }
+//   })
+//   // |> list.prepend(#(delta, 0.0))
+//   // |> list.append([#(0.0, 0.0)]) // TODO
+// }
+
+pub fn outer_line_vecs(path: Path2d, is_left is_left: Bool) -> List(Vec2d) {
+  let sign = case is_left {
+    True -> 1.0
+    False -> -1.0
+  }
+  let delta = sign *. line_width /. 2.0
+  path
+  |> list.window_by_2
+  |> list.fold([#(0.0, 0.0)], fn(acc, a_b) {
+    let assert Ok(prev_pos) = list.first(acc)
+    let #(a, b) = a_b
+    case a {
+      North | South -> {
+        let y = case a {
+          // nested alternative patterns like #(North | South, East) are not
+          // currently possible
+          North -> 1.0
+          South -> -1.0
+          _ -> panic
+        }
+        let y_delta = case b {
+          East -> delta
+          West -> -1.0 *. delta
+          _ -> 0.0 // TODO for end
+        }
+      [#(prev_pos.0, int.to_float(float.round(prev_pos.1)) +. y +. y_delta), ..acc]
+      }
+      East | West -> {
+        let x = case a {
+          // nested alternative patterns like #(North | South, East) are not
+          // currently possible
+          East -> 1.0
+          West -> -1.0
+          _ -> panic
+        }
+        let x_delta = case b {
+          North -> -1.0 *. delta
+          South -> delta
+          _ -> 0.0 // TODO for end
+        }
+      [#(int.to_float(float.round(prev_pos.0)) +. x +. x_delta, prev_pos.1), ..acc]
+      }
+      _ -> [#(-1.0 *. delta, 0.0), ..acc]
+    }})
+  |> list.reverse
+}
+
+pub fn vec_add(v1: Vec2d, v2: Vec2d) -> Vec2d {
+  #(v1.0 +. v2.0, v1.1 +. v2.1)
+}
+
+// pub fn calc_line(path: Path2d, coords: Line2d, is_left is_left: Bool) -> Line2d {
+//   let vecs: List(Vec2d) = outer_line_vecs(path, is_left: is_left)
+//   list.zip(coords, vecs)
+//   |> list.map(fn(a_b) {
+//     let #(a, b) = a_b
+//     vec_add(a, b)
+//   })
+// }
+
+// pub fn calc_outer_lines(path: Path2d) -> #(Line2d, Line2d) {
+//   let coords: Line2d = make_coords(path)
+//   let line = calc_line(path, coords, _)
+//   io.debug(line(True))
+//   io.debug(line(False))
+//   #(line(True), line(False))
+// }
+
+pub fn calc_outer_lines(path: Path2d) -> #(Line2d, Line2d) {
+  let path =
+    path
+    |> list.prepend(Start)
+    |> list.append([End])
+  let line = outer_line_vecs(path, _)
+  #(line(True), line(False))
+}
+
+// pub fn calc_line(path: Path2d, is_left is_left: Bool) -> Line2d {
+//   let vecs: List(Vec2d) = outer_line_vecs(path, is_left: is_left)
+//   // io.debug(vecs)
+//   // list.zip(path, vecs)
+//   // |> list.map(fn(path_vec) {
+//   //   let #(path, vec) = path_vec
+//   //   // io.debug(vec)
+//   //   // io.debug(path)
+//   //   two_dimension_to_vec(path, vec)
+//   // })
+// }
+
+pub fn two_dimension_to_vec(d: Direction2d, v: Vec2d) -> Vec2d {
+  case d {
+    North -> #(v.0, v.1 +. 1.0)
+    East -> #(v.0 +. 1.0, v.1)
+    South -> #(v.0, v.1 -. 1.0)
+    West -> #(v.0 -. 1.0, v.1)
+    Start | End -> v
+  }
+}
+
+// pub fn two_dimension_to_vec(d: Direction2d) -> Vec2d {
+//   case d {
+//     North -> #(0.0, 1.0)
+//     East -> #(1.0, 0.0)
+//     South -> #(0.0, -1.0)
+//     West -> #(-1.0, 0.0)
+//     Start -> #(0.0, 0.0)
+//     End -> #(0.0, 0.0)
+//   }
+// }
+
+// pub fn make_coords(path2d: Path2d) -> Line2d {
+//   path2d
+//   |> list.fold([#(0.0, 0.0)], fn(acc, i) {
+//     let assert Ok(last) = list.first(acc)
+//     [vec_add(last, two_dimension_to_vec(i)), ..acc]
+//   })
+//   |> list.reverse
+// }
+
+pub fn add_z_axis(coord: Coord2d, z: Float) -> Coord3d {
+  // todo make partial function? function capture or curry2?
+  #(coord.0, coord.1, z)
+}
+
+pub fn calc_triangle_coord(
+  bisect1: #(Coord2d, Coord2d),
+  bisect2: #(Coord2d, Coord2d),
+) -> List(Triangle3d) {
+  //height
+  // (doing both faces even though it is redundant)
+  // let #(a, b) = bisect1
+  // let #(c, d) = bisect2
+  // let aaa = { bisect1.0 }.0
+
+  [bisect1.0, bisect1.1, bisect2.1, bisect2.0, bisect1.0]
+  |> list.window_by_2
+  |> list.map(fn(coords) {
+    [
+      #(
+        add_z_axis(coords.0, 0.0),
+        add_z_axis(coords.1, 0.0),
+        add_z_axis(coords.1, line_width),
+      ),
+      #(
+        add_z_axis(coords.0, 0.0),
+        add_z_axis(coords.0, line_width),
+        add_z_axis(coords.1, line_width),
+      ),
+    ]
+  })
+  |> list.flatten
+  |> list.append(
+    //flat planes
+    [
+      #(
+        add_z_axis(bisect1.0, 0.0),
+        add_z_axis(bisect1.1, 0.0),
+        add_z_axis(bisect2.1, 0.0),
+      ),
+      #(
+        add_z_axis(bisect1.0, line_width),
+        add_z_axis(bisect1.1, line_width),
+        add_z_axis(bisect2.1, line_width),
+      ),
+      #(
+        add_z_axis(bisect1.0, 0.0),
+        add_z_axis(bisect2.0, 0.0),
+        add_z_axis(bisect2.1, 0.0),
+      ),
+      #(
+        add_z_axis(bisect1.0, line_width),
+        add_z_axis(bisect2.0, line_width),
+        add_z_axis(bisect2.1, line_width),
+      ),
+    ],
+  )
+}

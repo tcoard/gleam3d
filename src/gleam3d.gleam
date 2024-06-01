@@ -6,7 +6,7 @@ import gleam/string
 import gleam/iterator
 import gleam/result
 import gleam/dict
-import coordinate_logic.{calc_outer_lines, add_z_axis}
+import coordinate_logic.{add_z_axis, calc_outer_lines}
 import custom_types.{
   type Coord2d, type Direction1d, type Direction2d, type Path1d, type Path2d,
   type Triangle3d, type Vec2d, East, L, North, R, South, West,
@@ -90,31 +90,33 @@ pub fn print_to_csv(triangles: List(Triangle3d)) {
 }
 
 pub fn main() {
-  let n = 3
-  let lines = iterator.iterate([R], fold_path)
-  |> iterator.take(n)
-  |> iterator.to_list
-  // |> list.last
-  // |> result.unwrap([R])
-  |> list.index_map(fn(curve, i) {
-    curve
-    |> one_dimension_to_2d
-    |> calc_outer_lines
-    |> list.map(add_z_axis(_, int.to_float(i)))
-  })
-
+  let n = 7
+  let lines =
+    iterator.iterate([R], fold_path)
+    |> iterator.take(n)
+    |> iterator.to_list
+    // |> list.last
+    // |> result.unwrap([R])
+    |> list.index_map(fn(curve, i) {
+      curve
+      |> one_dimension_to_2d
+      |> calc_outer_lines
+      |> list.map(add_z_axis(_, int.to_float(i)))
+    })
 
   // todo only need to do for first and last line when done, but it might not
   // matter
-  let planes = lines
-  |> list.map(coordinate_logic.plane)
-  |> list.flatten
+  let planes =
+    lines
+    |> list.map(coordinate_logic.plane)
+    |> list.flatten
 
-  let border = lines
-  |> coordinate_logic.border
-
-  io.debug(lines)
+  let border =
+    lines
+    |> coordinate_logic.border
+  planes
+  |> list.append(border)
   // |> list.append(planes)
-  // |> io.debug
-  // |> print_to_csv
+  |> io.debug
+  |> print_to_csv
 }

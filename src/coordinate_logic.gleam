@@ -4,9 +4,9 @@ import gleam/int
 import gleam/float
 import gleam/list
 import custom_types.{
-  type Coord2d, type Coord3d, type Direction2d, type Line2d, type Path1d,
-  type Path2d, type Triangle3d, type Vec2d, East, End, L, North, R, South, Start,
-  West, type Line3d
+  type Coord2d, type Coord3d, type Direction2d, type Line2d, type Line3d,
+  type Path1d, type Path2d, type Triangle3d, type Vec2d, East, End, L, North, R,
+  South, Start, West,
 }
 
 // must be smaller than 1 because of rounding logic
@@ -126,20 +126,93 @@ pub fn calc_outer_lines(path: Path2d) -> Line2d {
 // }
 //
 
+pub fn rectangle(a, b, c, d) {
+  [#(a, b, c), #(b, c, d)]
+}
+
+// pub fn idk(
+//   curr: Line3d,
+//   next: Line3d,
+//   acc: List(Triangle3d),
+// ) -> List(Triangle3d) {
+//   case curr {
+//     [curr1, curr2, curr3, curr4, ..curr_rest] -> {
+//       case next {
+//         [next1, next2, next3, next4, ..next_rest] -> {
+//           let acc = [
+//             #(curr1, curr3, next1),
+//             #(curr3, next1, next3),
+//             #(curr1, curr3, next2),
+//             #(curr3, next2, next4),
+//             ..acc
+//           ]
+//           idk(
+//             [curr2, curr3, curr4, ..curr_rest],
+//             [next3, next4, ..next_rest],
+//             acc,
+//           )
+//         }
+//         _ -> panic
+//       }
+//     }
+//     [curr1, curr2] -> {
+//       case next {
+//         [next1, next2] -> {
+//           [#(curr1, curr2, next1), #(curr2, next1, next2), ..acc]
+//         }
+//         _ -> panic
+//       }
+//     }
+//     a -> {
+//       io.debug(a)
+//       panic
+//     }
+//   }
+// }
+pub fn idk(
+  curr: Line3d,
+  next: Line3d,
+  acc: List(Triangle3d),
+) -> List(Triangle3d) {
+  case curr, next {
+    [curr1, curr2, curr3, ..curr_rest], [
+      next1,
+      next2,
+      next3,
+      next4,
+      ..next_rest
+    ] -> {
+      let acc = [
+        #(curr1, curr3, next1),
+        #(curr3, next1, next3),
+        #(curr1, curr3, next2),
+        #(curr3, next2, next4),
+        ..acc
+      ]
+      idk([curr2, curr3, ..curr_rest], [next3, next4, ..next_rest], acc)
+    }
+    [curr1, curr2], [next1, next2] -> [
+      #(curr1, curr2, next1),
+      #(curr2, next1, next2),
+      ..acc
+    ]
+    _, _ -> panic
+  }
+}
+
 pub fn border(lines: List(Line3d)) -> List(Triangle3d) {
   lines
   |> list.window_by_2
-  |> list.map(fn(a_b) {
-    let #(a, b) = a_b
-    io.debug(a)
+  |> list.map(fn(curr_next) {
+    let #(curr, next) = curr_next
     //make func pop get first two
-    let #(one, two, line) = case a {
-      [one, two, ..line] -> #(one, two, line)
+    case curr_next {
+      #([curr1, curr2, ..], [next1, next2, ..]) ->
+        idk(curr, next, [#(curr1, curr2, next1), #(curr2, next1, next2)])
       _ -> panic
     }
-    let assert Ok([first, ..line]) = a
   })
-  [#(#(0.0,0.0,0.0), #(0.0,0.0,0.0), #(0.0,0.0,0.0))]
+  |> list.flatten
   // |> list.window_by_2
   // |> list.map(fn(lines) {
   //   list.zip(lines.0, list.sized_chunk(lines.1, 2))

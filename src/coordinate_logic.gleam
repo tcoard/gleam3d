@@ -1,12 +1,10 @@
-import gleam/string
 import gleam/io
 import gleam/int
 import gleam/float
 import gleam/list
 import custom_types.{
-  type Coord2d, type Coord3d, type Direction2d, type Line2d, type Line3d,
-  type Path1d, type Path2d, type Triangle3d, type Vec2d, East, End, L, North, R,
-  South, Start, West,
+  type Coord2d, type Coord3d, type Line2d, type Line3d, type Path2d,
+  type Triangle3d, type Vec2d, East, End, North, South, Start, West,
 }
 
 // must be smaller than 1 because of rounding logic
@@ -81,15 +79,6 @@ pub fn outer_line_vecs(path: Path2d, is_left is_left: Bool) -> List(Vec2d) {
   |> list.reverse
 }
 
-// pub fn calc_outer_lines(path: Path2d) -> #(Line2d, Line2d) {
-//   let path =
-//     path
-//     |> list.prepend(Start)
-//     |> list.append([End])
-//   let line = outer_line_vecs(path, _)
-//   #(line(True), line(False))
-// }
-//
 pub fn calc_outer_lines(path: Path2d) -> Line2d {
   let path =
     path
@@ -103,72 +92,10 @@ pub fn calc_outer_lines(path: Path2d) -> Line2d {
   |> list.flatten
 }
 
-// pub fn border(line: Line2d) -> List(Triangle3d) {
-//   let assert Ok(first) = list.first(line)
-//   line
-//   |> list.append([first])
-//   |> list.window_by_2
-//   |> list.map(fn(coords) {
-//     [
-//       #(
-//         add_z_axis(coords.0, 0.0),
-//         add_z_axis(coords.1, 0.0),
-//         add_z_axis(coords.1, line_width),
-//       ),
-//       #(
-//         add_z_axis(coords.0, 0.0),
-//         add_z_axis(coords.0, line_width),
-//         add_z_axis(coords.1, line_width),
-//       ),
-//     ]
-//   })
-//   |> list.flatten
-// }
-//
-
 pub fn rectangle(a, b, c, d) {
   [#(a, b, c), #(b, c, d)]
 }
 
-// pub fn idk(
-//   curr: Line3d,
-//   next: Line3d,
-//   acc: List(Triangle3d),
-// ) -> List(Triangle3d) {
-//   case curr {
-//     [curr1, curr2, curr3, curr4, ..curr_rest] -> {
-//       case next {
-//         [next1, next2, next3, next4, ..next_rest] -> {
-//           let acc = [
-//             #(curr1, curr3, next1),
-//             #(curr3, next1, next3),
-//             #(curr1, curr3, next2),
-//             #(curr3, next2, next4),
-//             ..acc
-//           ]
-//           idk(
-//             [curr2, curr3, curr4, ..curr_rest],
-//             [next3, next4, ..next_rest],
-//             acc,
-//           )
-//         }
-//         _ -> panic
-//       }
-//     }
-//     [curr1, curr2] -> {
-//       case next {
-//         [next1, next2] -> {
-//           [#(curr1, curr2, next1), #(curr2, next1, next2), ..acc]
-//         }
-//         _ -> panic
-//       }
-//     }
-//     a -> {
-//       io.debug(a)
-//       panic
-//     }
-//   }
-// }
 pub fn idk(
   curr: Line3d,
   next: Line3d,
@@ -213,35 +140,8 @@ pub fn border(lines: List(Line3d)) -> List(Triangle3d) {
     }
   })
   |> list.flatten
-  // |> list.window_by_2
-  // |> list.map(fn(lines) {
-  //   list.zip(lines.0, list.sized_chunk(lines.1, 2))
-  //   |> list.map(fn(a_chunk2) {
-  //     let #(a, chunk2) = a_chunk2
-  //     case chunk2 {
-  //       [b, c] -> #(a, b, c)
-  //       _ -> panic
-  //     }
-  //   })
-  // })
-  // |> list.flatten
 }
 
-// pub fn plane(line: Line2d, z: Float) -> List(Triangle3d) {
-//   line
-//   |> list.window(by: 4)
-//   |> list.map(fn(coords4) {
-//     coords4
-//     |> list.window(3)
-//     |> list.map(fn(coords3) {
-//       case coords3 {
-//         [a, b, c] -> #(add_z_axis(a, z), add_z_axis(b, z), add_z_axis(c, z))
-//         _ -> panic
-//       }
-//     })
-//   })
-//   |> list.flatten
-// }
 pub fn plane(line: Line3d) -> List(Triangle3d) {
   line
   |> list.window(by: 4)
@@ -261,58 +161,4 @@ pub fn plane(line: Line3d) -> List(Triangle3d) {
 pub fn add_z_axis(coord: Coord2d, z: Float) -> Coord3d {
   // todo make partial function? function capture or curry2?
   #(coord.0, coord.1, z)
-}
-
-pub fn calc_triangle_coord(
-  bisect1: #(Coord2d, Coord2d),
-  bisect2: #(Coord2d, Coord2d),
-) -> List(Triangle3d) {
-  //height
-  // (doing both faces even though it is redundant)
-  // let #(a, b) = bisect1
-  // let #(c, d) = bisect2
-  // let aaa = { bisect1.0 }.0
-
-  [bisect1.0, bisect1.1, bisect2.1, bisect2.0, bisect1.0]
-  |> list.window_by_2
-  |> list.map(fn(coords) {
-    [
-      #(
-        add_z_axis(coords.0, 0.0),
-        add_z_axis(coords.1, 0.0),
-        add_z_axis(coords.1, line_width),
-      ),
-      #(
-        add_z_axis(coords.0, 0.0),
-        add_z_axis(coords.0, line_width),
-        add_z_axis(coords.1, line_width),
-      ),
-    ]
-  })
-  |> list.flatten
-  |> list.append(
-    //flat planes
-    [
-      #(
-        add_z_axis(bisect1.0, 0.0),
-        add_z_axis(bisect1.1, 0.0),
-        add_z_axis(bisect2.1, 0.0),
-      ),
-      #(
-        add_z_axis(bisect1.0, line_width),
-        add_z_axis(bisect1.1, line_width),
-        add_z_axis(bisect2.1, line_width),
-      ),
-      #(
-        add_z_axis(bisect1.0, 0.0),
-        add_z_axis(bisect2.0, 0.0),
-        add_z_axis(bisect2.1, 0.0),
-      ),
-      #(
-        add_z_axis(bisect1.0, line_width),
-        add_z_axis(bisect2.0, line_width),
-        add_z_axis(bisect2.1, line_width),
-      ),
-    ],
-  )
 }

@@ -4,16 +4,12 @@ import gleam/list
 import gleam/int
 import gleam/string
 import gleam/iterator
-import gleam/result
-import gleam/dict
 import coordinate_logic.{add_z_axis, calc_outer_lines}
 import custom_types.{
-  type Coord2d, type Direction1d, type Direction2d, type Path1d, type Path2d,
-  type Triangle3d, type Vec2d, East, L, North, R, South, West,
+  type Direction1d, type Direction2d, type Path1d, type Path2d, type Triangle3d,
+  East, L, North, R, South, West,
 }
 import simplifile
-
-// import gleam/order.{type Order}
 
 const out_path = "data/current.csv"
 
@@ -23,13 +19,6 @@ pub fn reverse_direction(d: Direction1d) -> Direction1d {
     L -> R
   }
 }
-
-// pub fn print_to_csv(triangles) {
-//   let assert Ok(_) =
-//     triangles
-//     |> string.join("\n")
-//     |> simplifile.write(to: out_path)
-// }
 
 pub fn fold_path(path: Path1d) {
   list.concat([
@@ -95,8 +84,6 @@ pub fn main() {
     iterator.iterate([R], fold_path)
     |> iterator.take(n)
     |> iterator.to_list
-    // |> list.last
-    // |> result.unwrap([R])
     |> list.index_map(fn(curve, i) {
       curve
       |> one_dimension_to_2d
@@ -114,9 +101,9 @@ pub fn main() {
   let border =
     lines
     |> coordinate_logic.border
+
   planes
   |> list.append(border)
-  // |> list.append(planes)
-  |> io.debug
+  // |> io.debug
   |> print_to_csv
 }

@@ -1,11 +1,11 @@
-import gleam/io
-import gleam/int
-import gleam/float
-import gleam/list
 import custom_types.{
   type Coord2d, type Coord3d, type Line2d, type Line3d, type Path2d,
   type Triangle3d, type Vec2d, East, End, North, South, Start, West,
 }
+import gleam/float
+import gleam/int
+import gleam/io
+import gleam/list
 
 // must be smaller than 1 because of rounding logic
 pub const line_width = 0.4
@@ -96,19 +96,15 @@ pub fn rectangle(a, b, c, d) {
   [#(a, b, c), #(b, c, d)]
 }
 
-pub fn idk(
+pub fn connect_layers(
   curr: Line3d,
   next: Line3d,
   acc: List(Triangle3d),
 ) -> List(Triangle3d) {
   case curr, next {
-    [curr1, curr2, curr3, ..curr_rest], [
-      next1,
-      next2,
-      next3,
-      next4,
-      ..next_rest
-    ] -> {
+    [curr1, curr2, curr3, ..curr_rest],
+      [next1, next2, next3, next4, ..next_rest]
+    -> {
       let acc = [
         #(curr1, curr3, next1),
         #(curr3, next1, next3),
@@ -116,7 +112,11 @@ pub fn idk(
         #(curr3, next2, next4),
         ..acc
       ]
-      idk([curr2, curr3, ..curr_rest], [next3, next4, ..next_rest], acc)
+      connect_layers(
+        [curr2, curr3, ..curr_rest],
+        [next3, next4, ..next_rest],
+        acc,
+      )
     }
     [curr1, curr2], [next1, next2] -> [
       #(curr1, curr2, next1),
@@ -127,7 +127,7 @@ pub fn idk(
   }
 }
 
-pub fn border(lines: List(Line3d)) -> List(Triangle3d) {
+pub fn layer_connections(lines: List(Line3d)) -> List(Triangle3d) {
   lines
   |> list.window_by_2
   |> list.map(fn(curr_next) {
@@ -135,7 +135,30 @@ pub fn border(lines: List(Line3d)) -> List(Triangle3d) {
     //make func pop get first two
     case curr_next {
       #([curr1, curr2, ..], [next1, next2, ..]) ->
-        idk(curr, next, [#(curr1, curr2, next1), #(curr2, next1, next2)])
+        connect_layers(curr, next, [
+          #(curr1, curr2, next1),
+          #(curr2, next1, next2),
+        ])
+      _ -> panic
+    }
+  })
+  |> list.flatten
+}
+
+pub fn border(line: Line3d) -> List(Triangle3d) {
+  let assert Ok(first) = list.first(line)
+  let assert Ok(last) = list.last(line)
+  line
+  |> list.prepend(first)
+  |> list.append([last])
+  |> list.window(3)
+  |> list.map(fn(coords) {
+    case coords {
+      [a, _, b] -> {
+        let a_prime = increase_z_axis(a, line_width)
+        let b_prime = increase_z_axis(b, line_width)
+        rectangle(a, a_prime, b, b_prime)
+      }
       _ -> panic
     }
   })
@@ -161,4 +184,9 @@ pub fn plane(line: Line3d) -> List(Triangle3d) {
 pub fn add_z_axis(coord: Coord2d, z: Float) -> Coord3d {
   // todo make partial function? function capture or curry2?
   #(coord.0, coord.1, z)
+}
+
+pub fn increase_z_axis(coord: Coord3d, z: Float) -> Coord3d {
+  // todo make partial function? function capture or curry2?
+  #(coord.0, coord.1, coord.2 +. z)
 }

@@ -1,14 +1,14 @@
-import gleam/io
-import gleam/float
-import gleam/list
-import gleam/int
-import gleam/string
-import gleam/iterator
-import coordinate_logic.{add_z_axis, calc_outer_lines}
+import coordinate_logic.{add_z_axis, calc_outer_lines, line_width}
 import custom_types.{
   type Direction1d, type Direction2d, type Path1d, type Path2d, type Triangle3d,
   East, L, North, R, South, West,
 }
+import gleam/float
+import gleam/int
+import gleam/io
+import gleam/iterator
+import gleam/list
+import gleam/string
 import simplifile
 
 const out_path = "data/current.csv"
@@ -88,8 +88,13 @@ pub fn main() {
       curve
       |> one_dimension_to_2d
       |> calc_outer_lines
-      |> list.map(add_z_axis(_, int.to_float(i)))
+      |> list.map(add_z_axis(_, int.to_float(i) *. line_width))
     })
+    |> list.prepend(
+      [North]
+      |> calc_outer_lines
+      |> list.map(add_z_axis(_, int.to_float(-1) *. line_width)),
+    )
 
   // todo only need to do for first and last line when done, but it might not
   // matter
@@ -98,12 +103,27 @@ pub fn main() {
     |> list.map(coordinate_logic.plane)
     |> list.flatten
 
+  let plane_tops =
+    lines
+    |> list.map(fn(line) {
+      line
+      |> list.map(coordinate_logic.increase_z_axis(_, line_width))
+      |> coordinate_logic.plane
+    })
+    |> list.flatten
+
+  // let layer_connections =
+  //   lines
+  //   |> coordinate_logic.layer_connections
   let border =
     lines
-    |> coordinate_logic.border
+    |> list.map(coordinate_logic.border)
+    |> list.flatten
 
   planes
+  |> list.append(plane_tops)
   |> list.append(border)
+  // |> list.append(layer_connections)
   // |> io.debug
   |> print_to_csv
 }

@@ -7,7 +7,7 @@ from matplotlib import pyplot
 triangles = []
 with open("data/current.csv", "r") as f:
     for line in f:
-        triangles.append([i.split(",") for i in line.strip().split("|")])
+        triangles.append([list(map(lambda x: float(x) * 10, i.split(","))) for i in line.strip().split("|")])
 
 data = np.zeros(len(triangles), dtype=mesh.Mesh.dtype)
 for i, triangle in enumerate(triangles):

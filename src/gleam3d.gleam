@@ -9,7 +9,7 @@ import gleam/list
 import simplifile
 import stl
 
-const out_path = "data/current.csv"
+const out_path = "data/dragon_curve.stl"
 
 pub fn reverse_direction(d: Direction1d) -> Direction1d {
   case d {
@@ -58,7 +58,7 @@ pub fn one_dimension_to_2d(path: Path1d) -> Path2d {
 }
 
 pub fn main() {
-  let n = 3
+  let n = 9
   let lines =
     iterator.iterate([R], fold_path)
     |> iterator.take(n)
